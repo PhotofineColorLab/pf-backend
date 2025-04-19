@@ -51,7 +51,9 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'https://pf-frontend-eta.vercel.app',
+}));
 
 // Logging middleware in development
 if (process.env.NODE_ENV === 'development') {
