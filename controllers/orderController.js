@@ -444,6 +444,28 @@ const debugOrderFile = async (req, res) => {
   }
 };
 
+// @desc    Get public album data by order ID
+// @route   GET /api/orders/album/:id
+// @access  Public
+const getPublicAlbumById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).select('albumName qrCode status');
+
+    if (order && order.status === 'Completed') {
+      res.json({
+        albumName: order.albumName,
+        orderId: order._id,
+        status: order.status
+      });
+    } else {
+      res.status(404).json({ message: 'Album not found or not available for public view' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -454,5 +476,6 @@ module.exports = {
   downloadDriveFile,
   addOrderNotes,
   deleteOrder,
-  debugOrderFile
+  debugOrderFile,
+  getPublicAlbumById
 }; 

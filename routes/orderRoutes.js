@@ -10,10 +10,15 @@ const {
   downloadDriveFile,
   addOrderNotes,
   deleteOrder,
-  debugOrderFile
+  debugOrderFile,
+  getPublicAlbumById
 } = require('../controllers/orderController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { upload } = require('../config/drive');
+
+// Public route for getting album data
+// @route   GET /api/orders/album/:id
+router.get('/album/:id', getPublicAlbumById);
 
 // @route   POST /api/orders
 router.post('/', protect, upload.single('file'), createOrder);
