@@ -1,5 +1,22 @@
 const mongoose = require('mongoose');
 
+// Define a simple schema for recording metadata about album pages
+// The actual pages will be stored in a separate collection
+const albumPageSchema = mongoose.Schema({
+  id: {
+    type: String,
+    required: true,
+  },
+  isSelected: {
+    type: Boolean,
+    default: false,
+  },
+  position: {
+    type: Number,
+    required: true,
+  }
+});
+
 const orderSchema = mongoose.Schema(
   {
     user: {
@@ -67,6 +84,20 @@ const orderSchema = mongoose.Schema(
     qrCode: {
       type: String,
       default: null,
+    },
+    // Store metadata about album pages instead of full data
+    albumPagesMeta: {
+      type: [albumPageSchema],
+      default: [],
+    },
+    // Total number of album pages
+    albumPagesCount: {
+      type: Number,
+      default: 0
+    },
+    coverIndex: {
+      type: Number,
+      default: 0,
     },
     downloadedByAdmin: {
       type: Boolean,

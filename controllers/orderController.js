@@ -1,4 +1,5 @@
 const Order = require('../models/orderModel');
+const AlbumPage = require('../models/albumPageModel');
 const { 
   getFileDownloadUrl, 
   deleteLocalFile, 
@@ -9,6 +10,7 @@ const {
 } = require('../config/drive');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 // @desc    Create new order with file upload
 // @route   POST /api/orders
@@ -176,6 +178,120 @@ const updateOrderStatus = async (req, res) => {
     }
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Save album pages for an order
+// @route   PUT /api/orders/:id/album
+// @access  Private/Admin
+const saveAlbumPages = async (req, res) => {
+  try {
+    const { albumPages, coverIndex } = req.body;
+    
+    if (!albumPages || !Array.isArray(albumPages)) {
+      return res.status(400).json({ message: 'Album pages are required' });
+    }
+    
+    // Log total size of album pages
+    const totalSizeBytes = JSON.stringify(albumPages).length;
+    console.log(`Total album data size: ${(totalSizeBytes / 1024 / 1024).toFixed(2)} MB`);
+    
+    const orderId = req.params.id;
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Start a MongoDB session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
+    try {
+      // 1. Clear any existing album pages for this order
+      await AlbumPage.deleteMany({ orderId: mongoose.Types.ObjectId(orderId) }, { session });
+      
+      // 2. Save each album page separately
+      const albumPagesMeta = [];
+      const albumPagePromises = albumPages.map(async (page, index) => {
+        // Create album page meta info (without the actual image data)
+        albumPagesMeta.push({
+          id: page.id,
+          isSelected: page.isSelected,
+          position: page.position || index
+        });
+        
+        // Create a new album page document
+        const albumPage = new AlbumPage({
+          orderId: mongoose.Types.ObjectId(orderId),
+          pageId: page.id,
+          dataUrl: page.dataUrl,
+          isSelected: page.isSelected,
+          position: page.position || index
+        });
+        
+        return albumPage.save({ session });
+      });
+      
+      // Wait for all album pages to be saved
+      await Promise.all(albumPagePromises);
+      
+      // 3. Update the order with album metadata
+      order.albumPagesMeta = albumPagesMeta;
+      order.albumPagesCount = albumPages.length;
+      order.coverIndex = coverIndex || 0;
+      await order.save({ session });
+      
+      // Commit the transaction
+      await session.commitTransaction();
+      console.log(`Saved album with ${albumPages.length} pages for order ${orderId}`);
+      
+      res.json({
+        message: 'Album pages saved successfully',
+        pagesCount: albumPages.length,
+        coverIndex
+      });
+    } catch (err) {
+      // Abort the transaction on error
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      // End the session
+      session.endSession();
+    }
+  } catch (error) {
+    console.error('Error saving album pages:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Get album page by ID
+// @route   GET /api/orders/album/:orderId/page/:pageId
+// @access  Public
+const getAlbumPage = async (req, res) => {
+  try {
+    const { orderId, pageId } = req.params;
+    
+    // Find the album page
+    const albumPage = await AlbumPage.findOne({ 
+      orderId: mongoose.Types.ObjectId(orderId), 
+      pageId: pageId 
+    });
+    
+    if (!albumPage) {
+      return res.status(404).json({ message: 'Album page not found' });
+    }
+    
+    // Return the album page data
+    res.json({
+      id: albumPage.pageId,
+      dataUrl: albumPage.dataUrl,
+      isSelected: albumPage.isSelected,
+      position: albumPage.position
+    });
+  } catch (error) {
+    console.error('Error getting album page:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -364,20 +480,22 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-
 // @desc    Get public album data by order ID
 // @route   GET /api/orders/album/:id
 // @access  Public
 const getPublicAlbumById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).select('albumName status');
+    const order = await Order.findById(req.params.id).select('albumName status albumPagesMeta albumPagesCount coverIndex');
 
     if (order) {
-      // Return public album data regardless of status
+      // Return public album data without the actual page content
       res.json({
         albumName: order.albumName,
         orderId: order._id,
-        status: order.status
+        status: order.status,
+        albumPagesMeta: order.albumPagesMeta || [],
+        albumPagesCount: order.albumPagesCount || 0,
+        coverIndex: order.coverIndex || 0
       });
     } else {
       res.status(404).json({ message: 'Album not found' });
@@ -398,5 +516,7 @@ module.exports = {
   downloadDriveFile,
   addOrderNotes,
   deleteOrder,
-  getPublicAlbumById
+  getPublicAlbumById,
+  saveAlbumPages,
+  getAlbumPage
 }; 

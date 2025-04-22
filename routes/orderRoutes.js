@@ -10,14 +10,19 @@ const {
   downloadDriveFile,
   addOrderNotes,
   deleteOrder,
-  getPublicAlbumById
+  getPublicAlbumById,
+  saveAlbumPages,
+  getAlbumPage
 } = require('../controllers/orderController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { upload } = require('../config/drive');
 
-// Public route for getting album data - this must be before any other routes using :id
+// Public routes - these must be before any other routes using :id
 // @route   GET /api/orders/album/:id
 router.get('/album/:id', getPublicAlbumById);
+
+// @route   GET /api/orders/album/:orderId/page/:pageId
+router.get('/album/:orderId/page/:pageId', getAlbumPage);
 
 // @route   POST /api/orders
 router.post('/', protect, upload.single('file'), createOrder);
@@ -34,12 +39,14 @@ router.get('/:id', protect, getOrderById);
 // @route   PUT /api/orders/:id/status
 router.put('/:id/status', protect, admin, updateOrderStatus);
 
+// @route   PUT /api/orders/:id/album
+router.put('/:id/album', protect, admin, saveAlbumPages);
+
 // @route   GET /api/orders/:id/download
 router.get('/:id/download', protect, admin, downloadOrderFile);
 
 // @route   GET /api/orders/drive/:fileId/download
 router.get('/drive/:fileId/download', protect, downloadDriveFile);
-
 
 // @route   PUT /api/orders/:id/notes
 router.put('/:id/notes', protect, admin, addOrderNotes);
