@@ -364,101 +364,23 @@ const deleteOrder = async (req, res) => {
   }
 };
 
-// @desc    Debug order file access
-// @route   GET /api/orders/:id/debug
-// @access  Private/Admin
-const debugOrderFile = async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    // Gather file information
-    const fileInfo = {
-      orderId: order._id,
-      fileUrl: order.fileUrl,
-      storageProvider: order.storageProvider || 'cloudinary', // Default for older orders
-      originalFilename: order.originalFilename,
-      fileSize: order.fileSize,
-      cloudinaryInfo: null,
-      localFileInfo: null
-    };
-
-    // Add provider-specific data
-    if (order.storageProvider === 'local' && order.serverFilename) {
-      fileInfo.serverFilename = order.serverFilename;
-      
-      // Check if the file exists locally
-      const filePath = path.join(__dirname, '../uploads', order.serverFilename);
-      try {
-        if (fs.existsSync(filePath)) {
-          const stats = fs.statSync(filePath);
-          fileInfo.localFileInfo = {
-            exists: true,
-            size: stats.size,
-            path: filePath,
-            created: stats.birthtime,
-            modified: stats.mtime,
-            downloadUrl: `${req.protocol}://${req.get('host')}/uploads/${order.serverFilename}`
-          };
-        } else {
-          fileInfo.localFileInfo = {
-            exists: false,
-            error: 'File not found on server'
-          };
-        }
-      } catch (fsError) {
-        fileInfo.localFileInfo = {
-          exists: false,
-          error: fsError.message
-        };
-      }
-    } else if (order.publicId) {
-      fileInfo.publicId = order.publicId;
-      
-      // Try to get Cloudinary resource info
-      try {
-        // Dynamically import cloudinary
-        const cloudinary = require('cloudinary').v2;
-        const resourceInfo = await cloudinary.api.resource(order.publicId, { resource_type: 'auto' });
-        fileInfo.cloudinaryInfo = {
-          type: resourceInfo.resource_type,
-          format: resourceInfo.format,
-          url: resourceInfo.url,
-          secure_url: resourceInfo.secure_url,
-          created_at: resourceInfo.created_at,
-          bytes: resourceInfo.bytes,
-          access_mode: resourceInfo.access_mode
-        };
-      } catch (cloudinaryError) {
-        fileInfo.cloudinaryError = cloudinaryError.message;
-      }
-    }
-
-    res.json(fileInfo);
-  } catch (error) {
-    console.error('Debug error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
 
 // @desc    Get public album data by order ID
 // @route   GET /api/orders/album/:id
 // @access  Public
 const getPublicAlbumById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).select('albumName qrCode status');
+    const order = await Order.findById(req.params.id).select('albumName status');
 
-    if (order && order.status === 'Completed') {
+    if (order) {
+      // Return public album data regardless of status
       res.json({
         albumName: order.albumName,
         orderId: order._id,
         status: order.status
       });
     } else {
-      res.status(404).json({ message: 'Album not found or not available for public view' });
+      res.status(404).json({ message: 'Album not found' });
     }
   } catch (error) {
     console.error(error);

@@ -16,7 +16,7 @@ const {
 const { protect, admin } = require('../middleware/authMiddleware');
 const { upload } = require('../config/drive');
 
-// Public route for getting album data
+// Public route for getting album data - this must be before any other routes using :id
 // @route   GET /api/orders/album/:id
 router.get('/album/:id', getPublicAlbumById);
 
