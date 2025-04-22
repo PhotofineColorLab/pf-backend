@@ -10,7 +10,6 @@ const {
   downloadDriveFile,
   addOrderNotes,
   deleteOrder,
-  debugOrderFile,
   getPublicAlbumById
 } = require('../controllers/orderController');
 const { protect, admin } = require('../middleware/authMiddleware');
@@ -41,8 +40,6 @@ router.get('/:id/download', protect, admin, downloadOrderFile);
 // @route   GET /api/orders/drive/:fileId/download
 router.get('/drive/:fileId/download', protect, downloadDriveFile);
 
-// @route   GET /api/orders/:id/debug
-router.get('/:id/debug', protect, admin, debugOrderFile);
 
 // @route   PUT /api/orders/:id/notes
 router.put('/:id/notes', protect, admin, addOrderNotes);

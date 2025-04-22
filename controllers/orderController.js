@@ -398,6 +398,5 @@ module.exports = {
   downloadDriveFile,
   addOrderNotes,
   deleteOrder,
-  debugOrderFile,
   getPublicAlbumById
 }; 
