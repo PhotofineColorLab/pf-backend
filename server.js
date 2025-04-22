@@ -52,7 +52,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: 'https://pf-frontend-eta.vercel.app',
+  origin: '*',
 }));
 
 // Logging middleware in development

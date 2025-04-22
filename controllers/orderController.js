@@ -164,8 +164,8 @@ const updateOrderStatus = async (req, res) => {
       
       // Generate QR code if transitioning from 'GeneratingAlbum' to 'Completed'
       if (status === 'Completed' && previousStatus === 'GeneratingAlbum' && !order.qrCode) {
-        // Use the frontend app URL instead of a placeholder domain
-        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        // Always use the production URL for QR codes
+        const baseUrl = 'https://pf-frontend-eta.vercel.app';
         order.qrCode = `${baseUrl}/album/${order._id}`;
       }
 
